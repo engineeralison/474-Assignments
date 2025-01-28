@@ -12,10 +12,10 @@ void setup() {
   while (!Serial);  // Wait for the Serial connection
   Serial.println("Starting ESP32 LED Blink");
 
-  // Set pin 19 to GPIO function (configure it as a general-purpose input/output)
+  // Set pin 5 to GPIO function (configure it as a general-purpose input/output)
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[GPIO_PIN], PIN_FUNC_GPIO);
 
-  // Set pin 19 as an output
+  // Set pin 5 as an output
   *(volatile uint32_t *)GPIO_ENABLE_REG |= (1 << GPIO_PIN);  // Enable output mode for pin 19
  
   *(volatile uint32_t *)GPIO_OUT_REG &= ~(1 << GPIO_PIN);  // Ensure the LED starts in the off state
