@@ -9,7 +9,6 @@
 #include "soc/gpio_periph.h"
 
 // Macros
-#define GPIO_PIN 2  // PIN 5
 
 #define GPIO_PIN 2  // GPIO Pin for LED
 
