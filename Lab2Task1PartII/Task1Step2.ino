@@ -1,51 +1,44 @@
+// Part I, Step 2
+// This sketch measures the time it takes for digitalWrite() to change the output voltage to HIGH
+// and then back to LOW.
+
+// Includes
 #include "driver/gpio.h"
 #include "soc/io_mux_reg.h"
 #include "soc/gpio_reg.h"
 #include "soc/gpio_periph.h"
 
-#define GPIO_PIN 19  // PIN 19
+// Macros
+#define GPIO_PIN 2  // PIN 5
 
-volatile uint32_t* status_register;
-volatile uint32_t* output_register;
+#define GPIO_PIN 2  // GPIO Pin for LED
 
 void setup() {
   // Initialize serial communication
-  Serial.begin(115200);
+  Serial.begin(9600);
+  while (!Serial); // Wait for serial connection
 
-  // set pin as output
-  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[GPIO_PIN], PIN_FUNC_GPIO);
-
-  status_register = (volatile uint32_t*) GPIO_ENABLE_REG;
-  output_register = (volatile uint32_t*) GPIO_OUT_REG;
- 
-  (*status_register) |= (1<< GPIO_PIN); // sets pins 19 as an input/output
-  (*output_register) &= ~(1<<GPIO_PIN);
+  // Set pin as output
+  pinMode(GPIO_PIN, OUTPUT);
 }
 
 void loop() {
+  uint32_t totalTime = 0;
 
-  uint32_t total_time = 0;
+  // Measure the time for 1000 repetitions
+  for (int i = 0; i < 1000; i++) {
+    uint32_t startTime = micros();  // Start time
+    digitalWrite(GPIO_PIN, HIGH);   // Set pin HIGH
+    digitalWrite(GPIO_PIN, LOW);    // Set pin LOW
+    uint32_t endTime = micros();    // End time
 
-  // for 1000 repetitions:
-  // measure time to 
-  // - turn pin's otupt to HIGH
-  // - turn pin's output to LOW 
-  // print out total time to serial monitor
-  // 1 sec delay
-  for(int i = 0; i<1000; i++){
-    uint32_t start_time = micros();
-
-    (*status_register) |= (1<< GPIO_PIN); 
-    (*output_register) &= ~(1 << GPIO_PIN);
-
-    uint32_t end_time = micros();
-    total_time = end_time - start_time; 
-    
+    totalTime += (endTime - startTime);  // Accumulate time difference
   }
 
- Serial.println("Total time for 1000 repetitions: ");
- Serial.println(total_time);
- delay(1000);
-  
+  // Print the total time for 1000 repetitions
+  Serial.print("Total time for 1000 repetitions: ");
+  Serial.print(totalTime);
+  Serial.println(" microseconds");
 
+  delay(1000);
 }
