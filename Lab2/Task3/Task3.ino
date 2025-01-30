@@ -4,12 +4,16 @@
 #define PR_PIN 1
 
 void setup() {
-  ledcAttach(LED_PIN, 80000000, 12);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(PR_PIN, INPUT);
+
+  ledcAttach(LED_PIN, 5000, 12);
 
 }
 
 void loop() {
-  int value = analogRead(PR_PIN);
+  uint32_t value = analogRead(PR_PIN);
 
-  ledcWrite(0, value);
+  bool res = ledcWrite(LED_PIN, value);
 }
