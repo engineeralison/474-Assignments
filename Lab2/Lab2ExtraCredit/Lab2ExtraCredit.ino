@@ -4,7 +4,7 @@
 // Descripton: This sketch prodcues a sequence of frequencies of the LED changing its brightness
 // in a specific sequence and plays all the way through low -> higher -> highest.
 
-// ====== Include's ========
+// ====== Includes ========
 #include <Arduino.h>
 #include <driver/ledc.h>
 #include "driver/gpio.h"
@@ -13,7 +13,7 @@
 #include "soc/gpio_periph.h"
 #include "soc/timer_group_reg.h"
 
-// ======== Define's ==========
+// ======== Macros ==========
 #define LED_PIN 5      // GPIO for LED
 #define PR_PIN 1       // GPIO for Photoresistor
 #define THRESHOLD 2000 // Adjust based on your environment
