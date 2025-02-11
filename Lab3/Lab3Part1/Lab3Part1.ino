@@ -6,69 +6,48 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // Initialize the LCD
 void setup() {
   Serial.begin(115200);
 
-  Wire.begin(11, 12);
+  Wire.begin(8,9);
   lcd.init();
   lcd.backlight();
+
   delay(2);
 }
 
+void sendCommand(uint8_t command) {
+    Wire.beginTransmission(0x27);
+    Wire.write((command & 0xF0) | 0x08); // Send high nibble with backlight on
+    Wire.write((command & 0xF0) | 0x0C); // Enable bit high
+    Wire.write((command & 0xF0) | 0x08); // Enable bit low
+    
+    Wire.write((command << 4) | 0x08); // Send low nibble with backlight on
+    Wire.write((command << 4) | 0x0C); // Enable bit high
+    Wire.write((command << 4) | 0x08); // Enable bit low
+    Wire.endTransmission();
+    delay(2);
+}
+
+void sendData(uint8_t data) {
+    Wire.beginTransmission(0x27);
+    Wire.write((data & 0xF0) | 0x09); // Send high nibble with RS=1, Enable=0
+    Wire.write((data & 0xF0) | 0x0D); // Enable bit high
+    Wire.write((data & 0xF0) | 0x09); // Enable bit low
+    
+    Wire.write((data << 4) | 0x09); // Send low nibble with RS=1, Enable=0
+    Wire.write((data << 4) | 0x0D); // Enable bit high
+    Wire.write((data << 4) | 0x09); // Enable bit low
+    Wire.endTransmission();
+    delay(2);
+}
 
 void loop() {
-  if (Serial.available()) {
-        delay(100); // Wait to receive full input
-        String input = Serial.readString();
-        Serial.print(input);
-        
-
-        Wire.beginTransmission(0x27);
-        Wire.write(0x04);
-        Wire.write(0x01 | 0x08);
-        //Wire.write(0x00);
-        Wire.write(0x04);
-        Wire.write(0x80 | 0x08);
-        //Wire.write(0x00);
-        Wire.endTransmission();
-
-        
-        for (int i = 0; i < input.length(); i++) {
-          Wire.beginTransmission(0x27);
-          uint8_t data = input[i];
-          data &= 0xF0;
-          data |= 0x01;
-          Wire.write(0x04);
-          Wire.write(data | 0x08);
-          //Wire.write(0x00);
-          data = input[i];
-          data = data << 4;
-          data |= 0x01;
-          Wire.write(0x04);
-          Wire.write(data | 0x08);
-          //Wire.write(0x00);
-          Wire.endTransmission();
-        }
-        
-    }
-    
-}
-/*
-void getInput(char *str) {
-  uint8_t i = 0;
-
-  while (true) {
     if (Serial.available()) {
-      str[i] = Serial.read();
+        sendCommand(0x01);  // Clear display
+        sendCommand(0x80);  // Set cursor to beginning
+        delay(5);
 
-      // break if we received newline
-      if (str[i] == '\n'){
-        break;
-      }
-
-      // only increment i if there's still space
-      if (i < 16){
-        i++;
-      }
+        while (Serial.available()) {
+            char c = Serial.read();
+            sendData(c);
+        }
     }
-  }
-  str[i] = '\0';
 }
-*/
