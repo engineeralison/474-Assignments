@@ -5,19 +5,19 @@
 
 #include "esp_mac.h"  // required - exposes esp_mac_type_t values
 void setup() {
- Serial0.begin(115200);
+ Serial.begin(115200);
+while(!Serial);
+
+ Serial.print("Wi-Fi Station (using 'esp_efuse_mac_get_default')\t");
+ Serial.println(getDefaultMacAddress());
 
 
- Serial0.print("Wi-Fi Station (using 'esp_efuse_mac_get_default')\t");
- Serial0.println(getDefaultMacAddress());
+ Serial.print("WiFi Station (using 'esp_read_mac')\t\t\t");
+ Serial.println(getInterfaceMacAddress(ESP_MAC_WIFI_STA));
 
 
- Serial0.print("WiFi Station (using 'esp_read_mac')\t\t\t");
- Serial0.println(getInterfaceMacAddress(ESP_MAC_WIFI_STA));
-
-
- Serial0.print("WiFi Soft-AP (using 'esp_read_mac')\t\t\t");
- Serial0.println(getInterfaceMacAddress(ESP_MAC_WIFI_SOFTAP));
+ Serial.print("WiFi Soft-AP (using 'esp_read_mac')\t\t\t");
+ Serial.println(getInterfaceMacAddress(ESP_MAC_WIFI_SOFTAP));
 }
 
 
