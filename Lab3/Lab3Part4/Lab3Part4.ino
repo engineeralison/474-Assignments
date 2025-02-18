@@ -138,7 +138,6 @@ void taskA() {
         }
   }
 
-  Serial0.print("LED Blinker: ");
 }
 
 // Description: Counts up from 1 to 10 on LCD.

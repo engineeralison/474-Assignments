@@ -23,8 +23,10 @@ void IRAM_ATTR dataReceived(const esp_now_recv_info_t * esp_now_info, const uint
 
 // =========> TODO: Write your timer ISR here.
 void IRAM_ATTR timerInterrupt() {
-  count++;
-  count_increased = true;
+  if(messageReceived){
+    count++;
+    count_increased = true;
+  }
 }
 
 
@@ -66,11 +68,11 @@ void loop() {
 // 			Message!” on the LCD
 
   if(messageReceived){
-    messageReceived = false;
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("New Message!");
     delay(2000);
+    messageReceived = false;
   }
 
   if(count_increased){
