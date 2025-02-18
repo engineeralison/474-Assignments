@@ -1,9 +1,18 @@
+/*
+Filename: Lab3Part4.ino
+Authors: Shahnaz Mohideen, Alison Tea
+Date: 02/18/2025
+Description: This file impelments a first come first serve scheduling algorithm using TCBs. It also implements
+3 tasks to manage: blinking on a LED, counting on an LCD, showing different notes on an LED
+*/
+
 // Includes
 #include <Arduino.h>
 #include <driver/ledc.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+// Macros
 #define LED_PIN 5   // External LED pin
 #define BUZZER_PIN 12 // Buzzer pin for music notes
 #define LEDC_CHANNEL 0
@@ -51,6 +60,7 @@ funcPtr taskC_Ptr = taskC;
 // Notes frequency array (example melody)
 int melody[] = {262, 294, 330, 349, 392, 440, 494, 523, 587, 659}; 
 
+// ISR for button press
 void IRAM_ATTR buttonInterrupt() {
   unsigned long interruptTime = millis();
     // Debounce check: Ignore button presses that occur within 200ms of each other
@@ -67,6 +77,7 @@ void setup() {
 
     pinMode(LED_PIN, OUTPUT);
 
+    // Set up LCD
     Wire.begin(8,9);
 
     lcd.init();
@@ -75,6 +86,7 @@ void setup() {
     
     ledcAttach(BUZZER_PIN, LEDC_FREQ, LEDC_RESOLUTION);
 
+    // Set up button
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     attachInterrupt(BUTTON_PIN, buttonInterrupt, FALLING);
 
@@ -107,12 +119,14 @@ void setup() {
 
 
 void loop() {
-  
+  // set status and run task
   TaskList[curr_task].isRunning = true;
   TaskList[curr_task].isDone = false;
   TaskList[curr_task].taskFunction();
   TaskList[curr_task].isRunning = false;
   TaskList[curr_task].isDone = true;
+
+  // increment curr_task to move on to next task
   curr_task = (curr_task + 1) % NUM_TASKS;
 
   delay(10);
@@ -120,7 +134,7 @@ void loop() {
 }
 
 
-
+// Name: taskA
 // Description: Turns an external LED on and off eight times 
 // in one-second intervals.
 void taskA() {
@@ -140,6 +154,7 @@ void taskA() {
 
 }
 
+// Name: taskB
 // Description: Counts up from 1 to 10 on LCD.
 void taskB() {
     Serial0.print("Counter\n");
@@ -157,6 +172,7 @@ void taskB() {
     }
 }
 
+// Name: taskC
 // Description: Plays a melody and displays the note voltage levels.
 void taskC() {
     Serial0.print("Music Player\n");

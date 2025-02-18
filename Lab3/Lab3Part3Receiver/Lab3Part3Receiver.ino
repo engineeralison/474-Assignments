@@ -23,7 +23,7 @@ void IRAM_ATTR dataReceived(const esp_now_recv_info_t * esp_now_info, const uint
 
 // =========> TODO: Write your timer ISR here.
 void IRAM_ATTR timerInterrupt() {
-  if(messageReceived){
+  if(!messageReceived){
     count++;
     count_increased = true;
   }
