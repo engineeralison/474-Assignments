@@ -51,8 +51,8 @@ funcPtr taskD_Ptr = taskD;
 int melody[] = {262, 294, 330, 349, 392, 440, 494, 523, 587, 659}; 
 
 void setup() {
-    Serial.begin(115200);
-    while(!Serial);
+    Serial0.begin(115200);
+    //while(!Serial);
 
     pinMode(LED_PIN, OUTPUT);
 
@@ -110,8 +110,8 @@ void loop() {
       TaskList[i].taskFunction(); // this executes the task by calling the function using the function pointer
       TaskList[i].isRunning = false;
       TaskList[i].isDone = true;
-      Serial.print(TaskList[i].priority);
-      Serial.println();
+      Serial0.print(TaskList[i].priority);
+      Serial0.println();
     }else{
       break;
     }
@@ -151,7 +151,7 @@ void taskA() {
         taskA_timer++;
   }
 
-  Serial.print("LED Blinker: ");
+  Serial0.print("LED Blinker: ");
 }
 
 // Description: Counts up from 1 to 10 on LCD.
@@ -164,7 +164,7 @@ void taskB() {
         delay(1000);
     }
 
-    Serial.print("Counter: ");
+    Serial0.print("Counter: ");
 }
 
 // Description: Plays a melody and displays the note voltage levels.
@@ -176,24 +176,24 @@ void taskC() {
 
         // Output frequency using LEDC
         ledcWrite(BUZZER_PIN, freq);
-        Serial.print("Playing note: ");
-        Serial.println(freq);
+        Serial0.print("Playing note: ");
+        Serial0.println(freq);
 
         delay(500);
     }
     ledcWrite(BUZZER_PIN, 0); // Stop tone
 
-    Serial.print("Music Player: ");
+    Serial0.print("Music Player: ");
 }
 
 
 // Description: Prints A-Z to Serial Monitor.
 void taskD() {
     for (char letter = 'A'; letter <= 'Z'; letter++) {
-        Serial.print(letter);
-        Serial.print(" ");
+        Serial0.print(letter);
+        Serial0.print(" ");
         delay(250);
     }
-    Serial.println();
-    Serial.print("Alphabet Printer: ");
+    Serial0.println();
+    Serial0.print("Alphabet Printer: ");
 }

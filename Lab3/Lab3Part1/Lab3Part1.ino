@@ -18,9 +18,9 @@ void sendCommand(uint8_t);
 void sendData(uint8_t);
 
 void setup() {
-  Serial.begin(115200);
+  Serial0.begin(115200);
   
-  Wire.begin(11,12);
+  Wire.begin(8,9);
   lcd.init();
   lcd.backlight();
 
@@ -28,13 +28,13 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available()) {
+    if (Serial0.available()) {
         sendCommand(0x01);  // Clear display
         sendCommand(0x80);  // Set cursor to beginning
         delay(5);
 
-        while (Serial.available()) {
-            char c = Serial.read();
+        while (Serial0.available()) {
+            char c = Serial0.read();
             if(c != '\n'){
               sendData(c);
             }
