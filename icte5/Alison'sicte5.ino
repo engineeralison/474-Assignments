@@ -4,9 +4,9 @@
 #include "queue.h"
 
 // Define LED pins
-#define RED_LED 19
-#define YELLOW_LED 20
-#define GREEN_LED 21
+#define RED_LED 2
+#define YELLOW_LED 3
+#define GREEN_LED 4
 
 // Define Traffic Light States
 typedef enum {
@@ -23,6 +23,7 @@ void Task_TrafficLight(void *pvParameters) {
     TrafficLightState_t currentState;
     while (1) {
         if (xQueueReceive(trafficQueue, &currentState, portMAX_DELAY) == pdPASS) {
+            Serial.println("Received new traffic light state from queue");
             // Turn off all LEDs
             digitalWrite(RED_LED, LOW);
             digitalWrite(YELLOW_LED, LOW);
@@ -32,15 +33,15 @@ void Task_TrafficLight(void *pvParameters) {
             switch (currentState) {
                 case RED:
                     digitalWrite(RED_LED, HIGH);
-                    Serial.println("RED Light ON");
+                    Serial.println("RED Light ON - Stop");
                     break;
                 case GREEN:
                     digitalWrite(GREEN_LED, HIGH);
-                    Serial.println("GREEN Light ON");
+                    Serial.println("GREEN Light ON - Go");
                     break;
                 case YELLOW:
                     digitalWrite(YELLOW_LED, HIGH);
-                    Serial.println("YELLOW Light ON");
+                    Serial.println("YELLOW Light ON - Slow Down");
                     break;
             }
         }
@@ -51,6 +52,7 @@ void Task_TrafficLight(void *pvParameters) {
 void Task_TrafficController(void *pvParameters) {
     TrafficLightState_t state = RED;
     while (1) {
+        Serial.println("Sending new traffic light state to queue");
         // Send the current state to the queue
         xQueueSend(trafficQueue, &state, portMAX_DELAY);
         vTaskDelay(pdMS_TO_TICKS(3000)); // 3 seconds delay
@@ -69,6 +71,7 @@ void Task_TrafficController(void *pvParameters) {
 void setup() {
     // Initialize Serial Monitor
     Serial.begin(115200);
+    Serial.println("Initializing Traffic Light System");
 
     // Configure LED pins as output
     pinMode(RED_LED, OUTPUT);
@@ -81,12 +84,15 @@ void setup() {
         Serial.println("Failed to create queue");
         while (1);
     }
+    Serial.println("Queue created successfully");
 
     // Create tasks
+    Serial.println("Creating tasks");
     xTaskCreate(Task_TrafficController, "TrafficController", 1000, NULL, 1, NULL);
     xTaskCreate(Task_TrafficLight, "TrafficLight", 1000, NULL, 1, NULL);
 
     // Start the scheduler
+    Serial.println("Starting FreeRTOS Scheduler");
     vTaskStartScheduler();
 }
 
