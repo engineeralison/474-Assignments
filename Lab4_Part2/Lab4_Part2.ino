@@ -8,9 +8,6 @@
 #define PR_PIN 1
 #define BUZZER_PIN 20
 #define LED_PIN 5
-#define LEDC_CHANNEL 0
-#define LEDC_FREQ 1000
-#define LEDC_RESOLUTION 8
 #define SMA_WINDOW_SIZE 5
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -84,7 +81,7 @@ void Task_LightDetector (void *pvParameters) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
             // Release semaphore
             xSemaphoreGive(xBinarySemaphore);
-            Serial.println(sma_value);
+            Serial.println(value);
         }
         
         vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for stability
@@ -108,8 +105,11 @@ void Task_LCD (void *pvParameters){
     while (1) {
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             lcd.clear();
-            sprintf(buffer, "Light: %lu", sum / SMA_WINDOW_SIZE);
+            sprintf(buffer, "SMA: %lu", sum / SMA_WINDOW_SIZE);
             lcd.setCursor(0, 0);
+            lcd.print("Light: ");
+            lcd.print(lightReadings[(sma_index + SMA_WINDOW_SIZE - 1) % SMA_WINDOW_SIZE]);
+            lcd.setCursor(0, 1);
             lcd.print(buffer);
             xSemaphoreGive(xBinarySemaphore);
         }
