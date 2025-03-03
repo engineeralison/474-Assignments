@@ -1,4 +1,3 @@
-#include "Arduino.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -7,41 +6,50 @@
 
 // Macros
 #define PR_PIN 1
+#define BUZZER_PIN 20
 #define LED_PIN 5
+#define LEDC_CHANNEL 0
+#define LEDC_FREQ 1000
+#define LEDC_RESOLUTION 8
 #define SMA_WINDOW_SIZE 5
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-SemaphoreHandle_t xLightSemaphore;
+SemaphoreHandle_t xBinarySemaphore;
 TaskHandle_t TaskHandle_LightDetector;
 TaskHandle_t TaskHandle_LCD;
+TaskHandle_t TaskHandle_AnomalyAlarm;
+TaskHandle_t TaskHandle_PrimeCalculation;
 
 uint32_t lightReadings[SMA_WINDOW_SIZE] = {0};
 uint8_t sma_index = 0;
 uint32_t sum = 0;
-uint32_t sma = 0;
 
 void setup() {
-  Serial0.begin(115200);
-  Serial0.println("Starting");
-  //while(!Serial);
+  Serial.begin(9600);
+  while(!Serial);
 
   // setup lcd
-  Wire.begin(8, 9);
+  Wire.begin(8,9);
   lcd.init();
   lcd.backlight();
-  
+  delay(2);
+
   // setup photoresistor
   pinMode(PR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  xLightSemaphore = xSemaphoreCreateBinary();
-  
-  xSemaphoreGive(xLightSemaphore);
-  if(xLightSemaphore != NULL){
+  xBinarySemaphore = xSemaphoreCreateBinary();
+
+  if (xBinarySemaphore != NULL){
+    xSemaphoreGive(xBinarySemaphore); // allow first task to proceed
     xTaskCreatePinnedToCore(Task_LightDetector, "LightDetector", 2048, NULL, 1, &TaskHandle_LightDetector, 0);
     xTaskCreatePinnedToCore(Task_LCD, "LCD", 2048, NULL, 1, &TaskHandle_LCD, 0);
+    xTaskCreatePinnedToCore(Task_AnomalyAlarm, "AnomalyAlarm", 2048, NULL, 1, &TaskHandle_AnomalyAlarm, 1);
+    xTaskCreatePinnedToCore(Task_PrimeCalculation, "PrimeCalculation", 2048, NULL, 1, &TaskHandle_PrimeCalculation, 1);
   }
+  
+  
 }
 // ====================> TODO:
 //         1. Initialize pins, serial, LCD, etc
@@ -55,39 +63,35 @@ void loop() {}
 
 
 void Task_LightDetector (void *pvParameters) {
+  Serial.println("Task_LightDetector is running...");
+
   pinMode(LED_PIN, OUTPUT);
   pinMode(PR_PIN, INPUT);
 
-  while(1){
-    Serial0.println("Starting PR task");
-    if(xSemaphoreTake(xLightSemaphore, portMAX_DELAY) == pdTRUE){
-      Serial0.println("Reading value");
-      uint32_t value = analogRead(PR_PIN);
-      
-      // calculate SMA
-      sum -= lightReadings[sma_index];
-      lightReadings[sma_index] = value;
-      sum += value;
-      sma_index = (sma_index + 1) % SMA_WINDOW_SIZE;
-      sma = sum / SMA_WINDOW_SIZE;
+   while (1) {
+        uint32_t value = analogRead(PR_PIN);
+        //Serial.println("Waiting for semaphore...");
 
-      // Signal other tasks
-      xSemaphoreGive(xLightSemaphore);
-    }
+        if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
+            // Calculate SMA
+            sum -= lightReadings[sma_index];
+            lightReadings[sma_index] = value;
+            sum += lightReadings[sma_index];
 
-    // Debugging
-    // Serial.print("Light Level: ");
-    // Serial.print(value);
-    // Serial.print(" | SMA: ");
-    // Serial.println(sma);
+            // Update index
+            sma_index = (sma_index + 1) % SMA_WINDOW_SIZE;
 
-    //vTaskDelay(pdMS_TO_TICKS(500)); // Delay for 500ms
+            uint32_t sma_value = sum / SMA_WINDOW_SIZE;
+            // Release semaphore
+            xSemaphoreGive(xBinarySemaphore);
+            Serial.println(sma_value);
+        }
+        
+        vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for stability
     }
 }
 
   
-
-
 // ====================> TODO:
 //          1. Initialize Variables
 //          2. Loop Continuously
@@ -98,7 +102,20 @@ void Task_LightDetector (void *pvParameters) {
 
 
 
-void Task_LCD(void* args){
+void Task_LCD (void *pvParameters){
+   char buffer[16];
+
+    while (1) {
+        if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
+            lcd.clear();
+            sprintf(buffer, "Light: %lu", sum / SMA_WINDOW_SIZE);
+            lcd.setCursor(0, 0);
+            lcd.print(buffer);
+            xSemaphoreGive(xBinarySemaphore);
+        }
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+}
 // ====================> TODO:
 //          1. Initialize Variables
 //           2. Loop Continuously
@@ -106,35 +123,57 @@ void Task_LCD(void* args){
 //            - If data has changed, update the LCD with the new light level and SMA.
 //            - Give back the semaphore.
 
-  while(1){
-    Serial0.println("Starting LCD task");
-    if(xSemaphoreTake(xLightSemaphore, portMAX_DELAY) == pdTRUE){
-      Serial0.println("Printing values");
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Light: ");
-      lcd.print(lightReadings[(sma_index + SMA_WINDOW_SIZE - 1) % SMA_WINDOW_SIZE]);
-      lcd.setCursor(0, 1);
-      lcd.print("SMA: ");
-      lcd.print(sma);
-      xSemaphoreGive(xLightSemaphore);
-    }
-  }
-}
-/*
 
-Anomaly Alarm Task (Core 1)
+void Task_AnomalyAlarm (void *pvParameters) {
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  
+    while (1) {
+        if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
+            uint32_t sma_value = sum / SMA_WINDOW_SIZE;
+
+            if (sma_value > 3800 || sma_value < 300) {
+                for (int i = 0; i < 3; i++) {
+                    digitalWrite(LED_PIN, HIGH);
+                    digitalWrite(BUZZER_PIN, HIGH);
+                    vTaskDelay(200 / portTICK_PERIOD_MS);
+                    digitalWrite(LED_PIN, LOW);
+                    digitalWrite(BUZZER_PIN, LOW);
+                    vTaskDelay(200 / portTICK_PERIOD_MS);
+                }
+            }
+            xSemaphoreGive(xBinarySemaphore);
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
 // ====================> TODO:
 //            1. Loop Continuously
 //             - Wait for semaphore.
 //             - Check if SMA indicates a light anomaly (outside thresholds).
 //             - If anomaly detected, flash a LED signal.
 //             - Give back the semaphore.
+bool isPrime(int num) {
+    if (num < 2) return false;
+    for (int i = 2; i * i <= num; i++) {
+        if (num % i == 0) return false;
+    }
+    return true;
+}
 
+void Task_PrimeCalculation (void *pvParameters) {
+    int num = 2;
+    while (1) {
+        if (isPrime(num)) {
+            Serial.println(num);
+        }
+        num++;
+        vTaskDelay(10 / portTICK_PERIOD_MS);  // Prevent CPU starvation
+    }
+}
 
-Prime Calculation Task (Core 1)
 // ====================> TODO:
 //            1. Loop from 2 to 5000
 //             - Check if the current number is prime.
 //             - If prime, print the number to the serial monitor
-*/
+
