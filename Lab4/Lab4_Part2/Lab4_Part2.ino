@@ -125,22 +125,24 @@ void Task_LCD (void *pvParameters){
 
 
 void Task_AnomalyAlarm (void *pvParameters) {
-  pinMode(LED_PIN, OUTPUT);
-  
+  //pinMode(LED_PIN, OUTPUT);
+  ledcAttach(LED_PIN, 5000, 12);
+
     while (1) {
-        if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
+        //if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
 
             if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
-                    digitalWrite(LED_PIN, HIGH);
+                    ledcWrite(LED_PIN, 4095);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
-                    digitalWrite(LED_PIN, LOW);
+                    ledcWrite(LED_PIN, 0);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
             }
-            xSemaphoreGive(xBinarySemaphore);
-        }
+            //xSemaphoreGive(xBinarySemaphore);
+        //}
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
