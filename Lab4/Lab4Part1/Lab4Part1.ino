@@ -37,9 +37,15 @@ void ledTask(void *arg) {
     digitalWrite(LED_PIN, HIGH);
     vTaskDelay(pdMS_TO_TICKS(500));
     remainingLedTime -= (500 / portTICK_PERIOD_MS);
+    if(remainingLedTime <= 0){
+      remainingLedTime = ledTaskExecutionTime;
+    }
     digitalWrite(LED_PIN, LOW);
     vTaskDelay(pdMS_TO_TICKS(500));
     remainingLedTime -= (500 / portTICK_PERIOD_MS);
+    if(remainingLedTime <= 0){
+      remainingLedTime = ledTaskExecutionTime;
+    }
   }
 }
 
@@ -57,6 +63,9 @@ void counterTask(void *arg) {
       lcd.print(taskB_timer);
       vTaskDelay(pdMS_TO_TICKS(1000));
       remainingCounterTime -= (1000 / portTICK_PERIOD_MS);
+      if(remainingCounterTime <= 0){
+        remainingCounterTime = counterTaskExecutionTime;
+      }
     }
     
   }
@@ -75,11 +84,13 @@ void alphabetTask(void *arg) {
       Serial0.print(" ");
       vTaskDelay(pdMS_TO_TICKS(1000));
       remainingAlphabetTime -= (1000 / portTICK_PERIOD_MS);
+      if(remainingAlphabetTime <= 0){
+        remainingAlphabetTime = alphabetTaskExecutionTime;
+      }
     }
     Serial0.println();
   }
 }
-
 
 void scheduleTasks(void *arg) {
    // TODO: Implement SRTF scheduling logic. This function should select the task with 
@@ -89,14 +100,6 @@ void scheduleTasks(void *arg) {
   while(1){
     TickType_t minTime = portMAX_DELAY;
     TaskHandle_t nextTask = NULL;
-
-    
-    if(remainingLedTime <= 0 && remainingCounterTime <= 0 && remainingAlphabetTime <= 0){
-      remainingLedTime = ledTaskExecutionTime;
-      remainingCounterTime = counterTaskExecutionTime;
-      remainingAlphabetTime = alphabetTaskExecutionTime;
-    }
-    
 
     // Find the task with the shortest remaining time
     if(remainingLedTime <= 0){
@@ -123,8 +126,9 @@ void scheduleTasks(void *arg) {
     // Resume the selected task and suspend scheduler for its duration
     if (nextTask != NULL) {
       vTaskResume(nextTask);
-      vTaskDelay(minTime);
+      vTaskDelay(pdMS_TO_TICKS(10));
     }
+    
   }
 }
 
