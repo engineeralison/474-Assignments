@@ -6,11 +6,7 @@
 
 // Macros
 #define PR_PIN 1
-#define BUZZER_PIN 20
 #define LED_PIN 5
-#define LEDC_CHANNEL 0
-#define LEDC_FREQ 1000
-#define LEDC_RESOLUTION 8
 #define SMA_WINDOW_SIZE 5
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -71,7 +67,7 @@ void Task_LightDetector (void *pvParameters) {
    while (1) {
         uint32_t value = analogRead(PR_PIN);
         //Serial.println("Waiting for semaphore...");
-
+        //Serial.println(value);
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             // Calculate SMA
             sum -= lightReadings[sma_index];
@@ -84,7 +80,6 @@ void Task_LightDetector (void *pvParameters) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
             // Release semaphore
             xSemaphoreGive(xBinarySemaphore);
-            Serial.println(sma_value);
         }
         
         vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for stability
@@ -108,14 +103,19 @@ void Task_LCD (void *pvParameters){
     while (1) {
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             lcd.clear();
-            sprintf(buffer, "Light: %lu", sum / SMA_WINDOW_SIZE);
             lcd.setCursor(0, 0);
+            sprintf(buffer, "Light: %lu", lightReadings[(sma_index + SMA_WINDOW_SIZE - 1) % SMA_WINDOW_SIZE]);
+            lcd.print(buffer);
+            lcd.setCursor(0, 1);
+            sprintf(buffer, "SMA: %lu", sum / SMA_WINDOW_SIZE);
             lcd.print(buffer);
             xSemaphoreGive(xBinarySemaphore);
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
+
+
 // ====================> TODO:
 //          1. Initialize Variables
 //           2. Loop Continuously
@@ -126,7 +126,6 @@ void Task_LCD (void *pvParameters){
 
 void Task_AnomalyAlarm (void *pvParameters) {
   pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
   
     while (1) {
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
@@ -135,10 +134,8 @@ void Task_AnomalyAlarm (void *pvParameters) {
             if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
                     digitalWrite(LED_PIN, HIGH);
-                    digitalWrite(BUZZER_PIN, HIGH);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                     digitalWrite(LED_PIN, LOW);
-                    digitalWrite(BUZZER_PIN, LOW);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
             }
@@ -147,6 +144,7 @@ void Task_AnomalyAlarm (void *pvParameters) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
+
 // ====================> TODO:
 //            1. Loop Continuously
 //             - Wait for semaphore.
