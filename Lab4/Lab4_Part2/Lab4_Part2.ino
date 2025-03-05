@@ -1,19 +1,29 @@
+/**
+ * @file Lab4Part2.ino
+ * @author Alison Tea
+ * @author Shahnaz Mohideen
+ * @date 5-February-2025
+ * @brief Demonstrates preemptive scheduling with FreeRTOS and dual-core processing.
+ *
+ * This Lab is divided into two parts to use scheduling techniques. The first part
+ * implements a Shortest Remaining Time First Scheduling algorithm using FreeRTOS.
+ * The three tasks implemented involve an LED blinker, counter, and alphabet printer.
+ * The second part uses the dual-core architecture of the ESP32 to capture and process
+ * real-time sensor data, with binary semaphores to synchronize tasks.
+ */
+
+
+// Libraries:
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include <LiquidCrystal_I2C.h>
 #include <driver/ledc.h>
-#include "soc/timer_group_reg.h"
 
-// Macros
-#define PR_PIN 1
-#define LED_PIN 5
-#define SMA_WINDOW_SIZE 5
-
-#define TIMER_DIVIDER_VALUE 80 // make it 1 Mhz
-#define TIMER_INCREMENT_MODE (1<<30) // set the timer to increment
-#define TIMER_ENABLE (1<<31) // Enable timer bit
-#define LED_TOGGLE_INTERVAL 2000000 // LED toggle interval: 2 second for a 1 Mhz clock
+// Macros:
+#define PR_PIN 1 //< The pin connected to the photoresistor 
+#define LED_PIN 5 //< The pin connected to the red LED
+#define SMA_WINDOW_SIZE 5 //< the value assigned to the sma window size
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -23,40 +33,34 @@ TaskHandle_t TaskHandle_LCD;
 TaskHandle_t TaskHandle_AnomalyAlarm;
 TaskHandle_t TaskHandle_PrimeCalculation;
 
-uint32_t lightReadings[SMA_WINDOW_SIZE] = {0};
-uint8_t sma_index = 0;
-uint32_t sum = 0;
+// Global Variables 
+uint32_t lightReadings[SMA_WINDOW_SIZE] = {0}; ///< Stores recent light readings
+uint8_t sma_index = 0; ///< Current index in the SMA window
+uint32_t sum = 0; ///< Sum of light readings for SMA calculation
 
+/**
+ * @brief Arduino setup function used for initialization.
+ * @details This function configures GPIO pins, initializes serial communication, 
+ *          creates the binary semaphore, and assigns FreeRTOS tasks to ESP32 cores.
+ */
 void setup() {
+  // Initialize pins, serial monitor, LCD
   Serial.begin(9600);
   while(!Serial);
 
-  // setup lcd
   Wire.begin(8,9);
   lcd.init();
   lcd.backlight();
   delay(2);
 
-  // setup photoresistor
+  // Pin configuration
   pinMode(PR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  // we need to config the value of the timer
-  uint32_t timer_config = (TIMER_DIVIDER_VALUE << 13);
-
-  // Add increment mode and enable mode
-  timer_config |= TIMER_INCREMENT_MODE;
-  timer_config |= TIMER_ENABLE;
-
-  // write the timer _config that we have created into the register
-  *((volatile uint32_t*) (TIMG_T0CONFIG_REG(0))) = timer_config;
-
-  // Trigger an update to apply the config (T0UPDATE)
-  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
-
-
+  // Create Binary Semaphore
   xBinarySemaphore = xSemaphoreCreateBinary();
 
+  // Assign tasks to core 0 or core 1
   if (xBinarySemaphore != NULL){
     xSemaphoreGive(xBinarySemaphore); // allow first task to proceed
     xTaskCreatePinnedToCore(Task_LightDetector, "LightDetector", 2048, NULL, 1, &TaskHandle_LightDetector, 0);
@@ -67,16 +71,17 @@ void setup() {
   
   
 }
-// ====================> TODO:
-//         1. Initialize pins, serial, LCD, etc
-//         2. Create binary semaphore for synchronizing light level data.
-//         3. Create Tasks
-//          - Create the `Light Detector Task` and assign it to Core 0.
-//          - Create `LCD Task` and assign it to Core 0.
-//          - Create `Anomaly Alarm Task` and assign it to Core 1.
-//          - Create `Prime Calculation Task` and assign it to Core 1.
+
+/**
+ * @brief Standard Arduino loop function.
+ * @note This function is intentionally empty because FreeRTOS does not use the `loop()` function.
+ */ 
 void loop() {}
 
+/**
+ * @brief Reads light level from the photoresistor and calculates SMA.
+ * @param pvParameters FreeRTOS task parameters (not used).
+ */
 
 void Task_LightDetector (void *pvParameters) {
   Serial.println("Task_LightDetector is running...");
@@ -106,17 +111,11 @@ void Task_LightDetector (void *pvParameters) {
     }
 }
 
-  
-// ====================> TODO:
-//          1. Initialize Variables
-//          2. Loop Continuously
-//           - Read light level from the photoresistor.
-//           - Take semaphore
-//           - Calculate the simple moving average and update variables.
-//           - Give semaphore to signal data is ready.
-
-
-
+/**
+ * @brief Displays the latest light level and SMA on an LCD.
+ * @details Waits for the semaphore before accessing shared data, then updates the LCD.
+ * @param pvParameters Pointer to task parameters (unused).
+ */
 void Task_LCD (void *pvParameters){
    char buffer[16];
 
@@ -135,54 +134,35 @@ void Task_LCD (void *pvParameters){
     }
 }
 
-
-// ====================> TODO:
-//          1. Initialize Variables
-//           2. Loop Continuously
-//            - Wait for semaphore.
-//            - If data has changed, update the LCD with the new light level and SMA.
-//            - Give back the semaphore.
-
-
+/**
+ * @brief Detects light anomalies and flashes an LED warning.
+ * @details If the SMA value exceeds a threshold, the LED flashes three times.
+ * @param pvParameters Pointer to task parameters (unused).
+ */
 void Task_AnomalyAlarm (void *pvParameters) {
-  //pinMode(LED_PIN, OUTPUT);
   ledcAttach(LED_PIN, 5000, 12);
-
+  
     while (1) {
+    
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
-
-            if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
                     ledcWrite(LED_PIN, 4095);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                     ledcWrite(LED_PIN, 0);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
-                //vTaskDelay(2000 / portTICK_PERIOD_MS);
-                 *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
-                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
-                 uint32_t previous_time = current_time;
-                  // run the led flashing
-                 while(1){
-                  if(current_time - previous_time >= LED_TOGGLE_INTERVAL){
-                    break;
-                  }
-                  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
-                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
-                  previous_time = current_time;
-                 
-                 }   
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
             }
+  
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-}
 
-// ====================> TODO:
-//            1. Loop Continuously
-//             - Wait for semaphore.
-//             - Check if SMA indicates a light anomaly (outside thresholds).
-//             - If anomaly detected, flash a LED signal.
-//             - Give back the semaphore.
+
+/**
+ * @brief Determines whether a given number is prime.
+ * @param num The integer to check.
+ * @return `true` if the number is prime, `false` otherwise.
+ */
 bool isPrime(int num) {
     if (num < 2) return false;
     for (int i = 2; i * i <= num; i++) {
@@ -191,6 +171,11 @@ bool isPrime(int num) {
     return true;
 }
 
+/**
+ * @brief Continuously calculates prime numbers up to a limit.
+ * @details Finds and prints prime numbers up to 5000 in the background.
+ * @param pvParameters Pointer to task parameters (unused).
+ */
 void Task_PrimeCalculation (void *pvParameters) {
     int num = 2;
     while (1) {
@@ -201,9 +186,3 @@ void Task_PrimeCalculation (void *pvParameters) {
         vTaskDelay(10 / portTICK_PERIOD_MS);  // Prevent CPU starvation
     }
 }
-
-// ====================> TODO:
-//            1. Loop from 2 to 5000
-//             - Check if the current number is prime.
-//             - If prime, print the number to the serial monitor
-

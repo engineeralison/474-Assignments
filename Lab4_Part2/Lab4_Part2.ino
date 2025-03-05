@@ -3,12 +3,17 @@
 #include "freertos/semphr.h"
 #include <LiquidCrystal_I2C.h>
 #include <driver/ledc.h>
+#include "soc/timer_group_reg.h"
 
 // Macros
 #define PR_PIN 1
-#define BUZZER_PIN 20
 #define LED_PIN 5
 #define SMA_WINDOW_SIZE 5
+
+#define TIMER_DIVIDER_VALUE 80 // make it 1 Mhz
+#define TIMER_INCREMENT_MODE (1<<30) // set the timer to increment
+#define TIMER_ENABLE (1<<31) // Enable timer bit
+#define LED_TOGGLE_INTERVAL 2000000 // LED toggle interval: 2 second for a 1 Mhz clock
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -35,6 +40,20 @@ void setup() {
   // setup photoresistor
   pinMode(PR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
+
+  // we need to config the value of the timer
+  uint32_t timer_config = (TIMER_DIVIDER_VALUE << 13);
+
+  // Add increment mode and enable mode
+  timer_config |= TIMER_INCREMENT_MODE;
+  timer_config |= TIMER_ENABLE;
+
+  // write the timer _config that we have created into the register
+  *((volatile uint32_t*) (TIMG_T0CONFIG_REG(0))) = timer_config;
+
+  // Trigger an update to apply the config (T0UPDATE)
+  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
+
 
   xBinarySemaphore = xSemaphoreCreateBinary();
 
@@ -68,7 +87,7 @@ void Task_LightDetector (void *pvParameters) {
    while (1) {
         uint32_t value = analogRead(PR_PIN);
         //Serial.println("Waiting for semaphore...");
-
+        //Serial.println(value);
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             // Calculate SMA
             sum -= lightReadings[sma_index];
@@ -81,7 +100,6 @@ void Task_LightDetector (void *pvParameters) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
             // Release semaphore
             xSemaphoreGive(xBinarySemaphore);
-            Serial.println(value);
         }
         
         vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for stability
@@ -105,17 +123,19 @@ void Task_LCD (void *pvParameters){
     while (1) {
         if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             lcd.clear();
-            sprintf(buffer, "SMA: %lu", sum / SMA_WINDOW_SIZE);
             lcd.setCursor(0, 0);
-            lcd.print("Light: ");
-            lcd.print(lightReadings[(sma_index + SMA_WINDOW_SIZE - 1) % SMA_WINDOW_SIZE]);
+            sprintf(buffer, "Light: %lu", lightReadings[(sma_index + SMA_WINDOW_SIZE - 1) % SMA_WINDOW_SIZE]);
+            lcd.print(buffer);
             lcd.setCursor(0, 1);
+            sprintf(buffer, "SMA: %lu", sum / SMA_WINDOW_SIZE);
             lcd.print(buffer);
             xSemaphoreGive(xBinarySemaphore);
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
+
+
 // ====================> TODO:
 //          1. Initialize Variables
 //           2. Loop Continuously
@@ -125,28 +145,38 @@ void Task_LCD (void *pvParameters){
 
 
 void Task_AnomalyAlarm (void *pvParameters) {
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  
+  //pinMode(LED_PIN, OUTPUT);
+  ledcAttach(LED_PIN, 5000, 12);
+
     while (1) {
-        if (xSemaphoreTake(xBinarySemaphore, portMAX_DELAY) == pdTRUE) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
 
             if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
-                    digitalWrite(LED_PIN, HIGH);
-                    digitalWrite(BUZZER_PIN, HIGH);
+                    ledcWrite(LED_PIN, 4095);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
-                    digitalWrite(LED_PIN, LOW);
-                    digitalWrite(BUZZER_PIN, LOW);
+                    ledcWrite(LED_PIN, 0);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
+                //vTaskDelay(2000 / portTICK_PERIOD_MS);
+                 *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
+                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
+                 uint32_t previous_time = current_time;
+                  // run the led flashing
+                 while(1){
+                  if(current_time - previous_time >= LED_TOGGLE_INTERVAL){
+                    break;
+                  }
+                  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
+                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
+                  previous_time = current_time;
+                 
+                 }   
             }
-            xSemaphoreGive(xBinarySemaphore);
-        }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
+
 // ====================> TODO:
 //            1. Loop Continuously
 //             - Wait for semaphore.
@@ -176,4 +206,3 @@ void Task_PrimeCalculation (void *pvParameters) {
 //            1. Loop from 2 to 5000
 //             - Check if the current number is prime.
 //             - If prime, print the number to the serial monitor
-
