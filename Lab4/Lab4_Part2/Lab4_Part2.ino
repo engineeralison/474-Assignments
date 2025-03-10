@@ -19,11 +19,17 @@
 #include "freertos/semphr.h"
 #include <LiquidCrystal_I2C.h>
 #include <driver/ledc.h>
+#include "soc/timer_group_reg.h"
 
 // Macros:
 #define PR_PIN 1 //< The pin connected to the photoresistor 
 #define LED_PIN 5 //< The pin connected to the red LED
 #define SMA_WINDOW_SIZE 5 //< the value assigned to the sma window size
+
+#define TIMER_DIVIDER_VALUE 80 //< make it 1 Mhz
+#define TIMER_INCREMENT_MODE (1<<30) //< set the timer to increment
+#define TIMER_ENABLE (1<<31) //< Enable timer bit
+#define LED_TOGGLE_INTERVAL 2000000 //< LED toggle interval: 2 second for a 1 Mhz clock
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -56,6 +62,19 @@ void setup() {
   // Pin configuration
   pinMode(PR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
+
+    // we need to config the value of the timer
+  uint32_t timer_config = (TIMER_DIVIDER_VALUE << 13);
+
+  // Add increment mode and enable mode
+  timer_config |= TIMER_INCREMENT_MODE;
+  timer_config |= TIMER_ENABLE;
+
+  // write the timer _config that we have created into the register
+  *((volatile uint32_t*) (TIMG_T0CONFIG_REG(0))) = timer_config;
+
+  // Trigger an update to apply the config (T0UPDATE)
+  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
 
   // Create Binary Semaphore
   xBinarySemaphore = xSemaphoreCreateBinary();
@@ -141,22 +160,33 @@ void Task_LCD (void *pvParameters){
  */
 void Task_AnomalyAlarm (void *pvParameters) {
   ledcAttach(LED_PIN, 5000, 12);
-  
+
     while (1) {
-    
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
+            if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
                     ledcWrite(LED_PIN, 4095);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                     ledcWrite(LED_PIN, 0);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                 *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
+                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
+                 uint32_t previous_time = current_time;
+                  // run the led flashing
+                 while(1){
+                  if(current_time - previous_time >= LED_TOGGLE_INTERVAL){
+                    break;
+                  }
+                  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
+                 uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
+                  previous_time = current_time;
+                 
+                 }   
             }
-  
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-
+}
 
 /**
  * @brief Determines whether a given number is prime.

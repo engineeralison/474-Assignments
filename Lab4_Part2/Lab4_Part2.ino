@@ -145,12 +145,10 @@ void Task_LCD (void *pvParameters){
 
 
 void Task_AnomalyAlarm (void *pvParameters) {
-  //pinMode(LED_PIN, OUTPUT);
   ledcAttach(LED_PIN, 5000, 12);
 
     while (1) {
             uint32_t sma_value = sum / SMA_WINDOW_SIZE;
-
             if (sma_value > 3800 || sma_value < 300) {
                 for (int i = 0; i < 3; i++) {
                     ledcWrite(LED_PIN, 4095);
@@ -158,7 +156,6 @@ void Task_AnomalyAlarm (void *pvParameters) {
                     ledcWrite(LED_PIN, 0);
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                 }
-                //vTaskDelay(2000 / portTICK_PERIOD_MS);
                  *((volatile uint32_t*) (TIMG_T0UPDATE_REG(0))) = 1;
                  uint32_t current_time = *((volatile uint32_t*) (TIMG_T0LO_REG(0)));
                  uint32_t previous_time = current_time;
