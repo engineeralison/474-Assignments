@@ -4,7 +4,6 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include "Wire.h"
-#include "Wire.h"
 #include "Adafruit_Sensor.h"
 #include "Adafruit_AM2320.h"
 
@@ -12,10 +11,12 @@ Adafruit_AM2320 am2320 = Adafruit_AM2320();
 
 // Pin Definitions
 #define MOTION_SENSOR_PIN 16
+#define SOUND_SENSOR_PIN 10
 
 #define MOTION 0
 #define TEMP 1
 #define HUM 2
+#define SOUND 3
 
 // Queue and Semaphore
 QueueHandle_t sensorQueue;
@@ -63,13 +64,6 @@ void Task_TemperatureHumidity(void *pvParameters) {
               xQueueSend(sensorQueue, &data1, portMAX_DELAY);
               SensorData data2 = {HUM, am2320.readHumidity()};
               xQueueSend(sensorQueue, &data2, portMAX_DELAY);
-              //Serial0.print("Temp: ");
-              //Serial0.print(am2320.readTemperature());
-              //Serial0.print(" C\t");
-
-              //Serial0.print("Humidity: ");
-              //Serial0.print(am2320.readHumidity());
-              //Serial0.println(" %");
             }
             xSemaphoreGive(queueSemaphore);
         }
@@ -78,7 +72,23 @@ void Task_TemperatureHumidity(void *pvParameters) {
     }
 }
 
+void Task_Sound(void *pvParameters) {
+  pinMode(SOUND_SENSOR_PIN, INPUT);
 
+  while (1) {
+        int soundState = digitalRead(SOUND_SENSOR_PIN);
+        SensorData data = {SOUND, soundState};
+
+        if (xSemaphoreTake(queueSemaphore, portMAX_DELAY) == pdTRUE) {
+            if (uxQueueSpacesAvailable(sensorQueue) > 0) {
+                xQueueSend(sensorQueue, &data, portMAX_DELAY);
+            }
+            xSemaphoreGive(queueSemaphore);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));  // Check every 500ms
+    }
+}
 
 // Serial Monitor Display Task (Consumer)
 void Task_SerialMonitor(void *pvParameters) {
@@ -93,6 +103,8 @@ void Task_SerialMonitor(void *pvParameters) {
                   Serial0.printf("Temperature: %d\n", receivedData.data);
                 } else if (receivedData.sensor == HUM){
                   Serial0.printf("Humidity: %d\n", receivedData.data);
+                } else if (receivedData.sensor == SOUND){
+                  Serial0.printf("Sound: %d\n", receivedData.data);
                 }
             }
           }
