@@ -11,21 +11,15 @@ Adafruit_AM2320 am2320 = Adafruit_AM2320();
 
 // Pin Definitions
 #define MOTION_SENSOR_PIN 16
-<<<<<<< HEAD
 #define SOUND_SENSOR_PIN 10
-=======
-#define MOTION 1
 #define sensorPower 7
 #define sensorPin 5
->>>>>>> fcae82f4b34bc5e5c13b2401c60321ce7188a2b6
 
+#define MOTION 1
 #define TEMP 1
 #define HUM 2
-<<<<<<< HEAD
 #define SOUND 3
-=======
-#define FLOOD 3
->>>>>>> fcae82f4b34bc5e5c13b2401c60321ce7188a2b6
+#define FLOOD 4
 
 // Queue and Semaphore
 QueueHandle_t sensorQueue;
@@ -146,14 +140,14 @@ void Task_SerialMonitor(void *pvParameters) {
 }
 
 void setup() {
-    Serial.begin(115200);
-    while(!Serial);
-    Serial.println("starting");
+    Serial0.begin(115200);
+    //while(!Serial);
+    Serial0.println("starting");
 
     // Create Queue (size: 10 elements)
     sensorQueue = xQueueCreate(10, sizeof(SensorData));
     if (sensorQueue == NULL) {
-        Serial.println("Error creating queue!");
+        Serial0.println("Error creating queue!");
         while (1);
     }
 
@@ -161,10 +155,10 @@ void setup() {
     Wire.begin(8,9);
 
     if (!am2320.begin()) {
-    Serial.println("Failed to detect AM2320 sensor! Check wiring.");
+    Serial0.println("Failed to detect AM2320 sensor! Check wiring.");
     while (1) { delay(10); } // Stop execution if sensor isn't found
     }
-    Serial.println("AM2320 sensor found!");
+    Serial0.println("AM2320 sensor found!");
     am2320.begin();
 
     // Create Semaphore
