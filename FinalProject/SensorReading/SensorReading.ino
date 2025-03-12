@@ -122,37 +122,43 @@ void Task_FloodDetection(void *pvParameters) {
     }
 }
 
+
 // Name: onDataSent
 // Description: Callback function for ESP NOW that is called when data is sent
-void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+//void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
  // Check if the delivery was successful and print the status
- Serial0.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");
-}
+ //Serial0.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");
+//}
 
 // Serial Monitor Display Task (Consumer)
 void Task_SerialMonitor(void *pvParameters) {
+  
     SensorData receivedData;
-    const char *message = "";
+    const char* message;
     while (1) {
         if (xSemaphoreTake(queueSemaphore, portMAX_DELAY) == pdTRUE) {
           if(uxQueueSpacesAvailable(sensorQueue) < 10){
             if (xQueueReceive(sensorQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
                 if(receivedData.sensor == MOTION){
                   Serial0.printf("Motion: %d\n", receivedData.data);
-                  message = "Motion Detected! Break-in robbery is occuring!";
-                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
+                  //message = "Motion Detected! Break-in robbery is occuring!";
+                  //message = "motion";
+                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
                 } else if (receivedData.sensor == HUM){
                   Serial0.printf("Humdiity: %d\n", receivedData.data);
-                  message = "Fire Detected! Please evacuate!";
-                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
+                  //message = "Fire Detected! Please evacuate!";
+                  //message = "humidity";
+                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
                 } else if (receivedData.sensor == 4){
                   Serial0.printf("Water Level: %d\n", receivedData.data);
-                  message = "Flood Detected! Please evacuate!";
-                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
+                  //message = "Flood Detected! Please evacuate!";
+                  //message = "flood";
+                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
                 } else if (receivedData.sensor == SOUND){
                   Serial0.printf("Sound: %d\n", receivedData.data);
-                  message = "Loud Sound Detected! Break-in robbery is occuring!";
-                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
+                  //message = "Loud Sound Detected! Break-in robbery is occuring!";
+                  //message = "sound";
+                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
                 } else {
                   Serial0.println("No warnings. You are safe.");
                 }
@@ -161,6 +167,7 @@ void Task_SerialMonitor(void *pvParameters) {
           xSemaphoreGive(queueSemaphore);
         }
     }
+    
 }
 
 void setup() {
@@ -177,7 +184,7 @@ void setup() {
 
     // Setup the ESP-NOW communication
     if (esp_now_init() != ESP_OK) return; // Initialize ESP-NOW and check for success
-    esp_now_register_send_cb(onDataSent); // Register the send callback function
+   // esp_now_register_send_cb(onDataSent); // Register the send callback function
 
     esp_now_peer_info_t peerInfo; // Data structure for handling peer information
     // Copy the receiver's MAC address to peer information
@@ -202,10 +209,10 @@ void setup() {
     xSemaphoreGive(queueSemaphore);  // Initialize semaphore
 
     // Create Producer Tasks (reading from sensor)
-    xTaskCreatePinnedToCore(Task_Motion, "Motion Task", 2048, NULL, 1, &Motion_Handle, 0);
-    xTaskCreatePinnedToCore(Task_FireDetection, "Fire Detection Task", 2048, NULL, 1, &Fire_Handle, 0);
-    xTaskCreatePinnedToCore(Task_FloodDetection, "Flood Detection Task", 2048, NULL, 1, &Flood_Handle, 0);
-    xTaskCreatePinnedToCore(Task_Sound, "Sound Task", 2048, NULL, 1, &Sound_Handle, 0);
+    xTaskCreatePinnedToCore(Task_Motion, "Motion Task", 4096, NULL, 1, &Motion_Handle, 0);
+    xTaskCreatePinnedToCore(Task_FireDetection, "Fire Detection Task", 4096, NULL, 1, &Fire_Handle, 0);
+    xTaskCreatePinnedToCore(Task_FloodDetection, "Flood Detection Task", 4096, NULL, 1, &Flood_Handle, 0);
+    xTaskCreatePinnedToCore(Task_Sound, "Sound Task", 4096, NULL, 1, &Sound_Handle, 0);
 
     // Create Consumer Tasks (process sensor data)
     xTaskCreatePinnedToCore(Task_SerialMonitor, "Serial Task", 2048, NULL, 1, &SerialMoniter_Handle, 0);
