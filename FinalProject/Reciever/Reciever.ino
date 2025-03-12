@@ -3,12 +3,16 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
+#define MOTION 0
+#define TEMP 1
+#define HUM 2
+#define SOUND 3
+#define FLOOD 4
+
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 volatile bool messageReceived = false;
-volatile bool count_increased = false;
-volatile int count = 0;
-hw_timer_t * timer = NULL; // Declare a timer variable and initialize to null
+volatile uint8_t sensor = 0;
 
 
 void IRAM_ATTR dataReceived(const esp_now_recv_info_t * esp_now_info, const uint8_t *incomingData, int len)
@@ -18,15 +22,7 @@ void IRAM_ATTR dataReceived(const esp_now_recv_info_t * esp_now_info, const uint
 //			trigger the message to the LCD.
 //
   messageReceived = true;
-}
-
-
-// =========> TODO: Write your timer ISR here.
-void IRAM_ATTR timerInterrupt() {
-  if(!messageReceived){
-    count++;
-    count_increased = true;
-  }
+  sensor = *incomingData;
 }
 
 
@@ -40,18 +36,6 @@ Wire.begin(8,9);
 lcd.init();
 lcd.backlight();   // Ensure backlight is ON
 lcd.setCursor(0, 0);
-lcd.print("Count: ");
-lcd.print(count);
-
-// =========> TODO: create a timer, attach an interrupt, set an alarm which will
-//			update the counter every second.
-
-timer = timerBegin(100000); // prescaler 100000
-// Attach timerInterrupt function to the timer
-timerAttachInterrupt(timer, &timerInterrupt); 
-// Set alarm to trigger interrupt every second, repeating (true), 
-// number of autoreloads (0=unlimited)
-timerAlarm(timer, 100000, true, 0);
 
 
  // Initializes ESP-NOW and check if it was successful; if not, exit the setup function
@@ -70,24 +54,20 @@ void loop() {
   if(messageReceived){
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("New Message!");
+    if(sensor == MOTION){
+      lcd.print("Motion");
+    }else if (sensor = TEMP){
+      lcd.print("Temperature");
+    }else if (sensor = HUM){
+      lcd.print("Humidity");
+    }else if (sensor == SOUND){
+      lcd.print("Sound");
+    }else if (sensor == FLOOD){
+      lcd.print("Water");
+    }
     delay(2000);
     messageReceived = false;
   }
 
-  if(count_increased){
-    count_increased = false;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Count: ");
-    lcd.print(count);
-  }
-}void setup() {
-  // put your setup code here, to run once:
-
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  
 }
