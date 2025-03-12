@@ -15,7 +15,7 @@ Adafruit_AM2320 am2320 = Adafruit_AM2320();
 #define sensorPower 7
 #define sensorPin 5
 
-#define MOTION 1
+#define MOTION 0
 #define TEMP 1
 #define HUM 2
 #define SOUND 3
@@ -63,9 +63,9 @@ void Task_FireDetection(void *pvParameters) {
         
         if (xSemaphoreTake(queueSemaphore, portMAX_DELAY) == pdTRUE) {
             if (uxQueueSpacesAvailable(sensorQueue) > 1) {
-              SensorData data1 = {TEMP, am2320.readTemperature()};
+              SensorData data1 = {TEMP, int(am2320.readTemperature())};
               xQueueSend(sensorQueue, &data1, portMAX_DELAY);
-              SensorData data2 = {HUM, am2320.readHumidity()};
+              SensorData data2 = {HUM, int(am2320.readHumidity())};
               xQueueSend(sensorQueue, &data2, portMAX_DELAY);
   
             }
