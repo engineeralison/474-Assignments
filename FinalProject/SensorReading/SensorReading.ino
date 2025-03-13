@@ -17,7 +17,7 @@ Adafruit_AM2320 am2320 = Adafruit_AM2320();
 #define sensorPower 7
 #define sensorPin 5
 
-#define MOTION 1
+#define MOTION 0
 #define TEMP 1
 #define HUM 2
 #define SOUND 3
@@ -27,6 +27,7 @@ Adafruit_AM2320 am2320 = Adafruit_AM2320();
 uint8_t broadcastAddress[] = {0x24, 0xEC, 0x4A, 0x0E, 0xB6, 0xE0}; 
 volatile bool buttonPressed = false;
 volatile unsigned long lastInterruptTime = 0;
+int message;
 
 // Queue and Semaphore
 QueueHandle_t sensorQueue;
@@ -60,7 +61,7 @@ void Task_Motion(void *pvParameters) {
         }
         
 
-        vTaskDelay(pdMS_TO_TICKS(500));  // Check every 500ms
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Check every 500ms
     }
 }
 
@@ -79,7 +80,7 @@ void Task_FireDetection(void *pvParameters) {
             xSemaphoreGive(queueSemaphore);
         }
         
-        vTaskDelay(pdMS_TO_TICKS(500));  // Check every 500ms
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Check every 500ms
     }
 }
 
@@ -125,42 +126,39 @@ void Task_FloodDetection(void *pvParameters) {
 
 // Name: onDataSent
 // Description: Callback function for ESP NOW that is called when data is sent
-//void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
  // Check if the delivery was successful and print the status
- //Serial0.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");
-//}
+ Serial0.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");
+}
 
 // Serial Monitor Display Task (Consumer)
 void Task_SerialMonitor(void *pvParameters) {
   
     SensorData receivedData;
-    const char* message;
     while (1) {
         if (xSemaphoreTake(queueSemaphore, portMAX_DELAY) == pdTRUE) {
           if(uxQueueSpacesAvailable(sensorQueue) < 10){
             if (xQueueReceive(sensorQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
-                if(receivedData.sensor == MOTION){
+                if(receivedData.sensor == MOTION && receivedData.data == 1){
                   Serial0.printf("Motion: %d\n", receivedData.data);
                   //message = "Motion Detected! Break-in robbery is occuring!";
-                  //message = "motion";
-                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
-                } else if (receivedData.sensor == HUM){
-                  Serial0.printf("Humdiity: %d\n", receivedData.data);
+                  message = MOTION;
+                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
+                } else if (receivedData.sensor == HUM && receivedData.data > 40){
+                  Serial0.printf("Humidity: %d\n", receivedData.data);
                   //message = "Fire Detected! Please evacuate!";
-                  //message = "humidity";
-                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
-                } else if (receivedData.sensor == 4){
+                  message = HUM;
+                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
+                } else if (receivedData.sensor == FLOOD && receivedData.data > 0){
                   Serial0.printf("Water Level: %d\n", receivedData.data);
                   //message = "Flood Detected! Please evacuate!";
-                  //message = "flood";
-                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
-                } else if (receivedData.sensor == SOUND){
+                  message = FLOOD;
+                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
+                } else if (receivedData.sensor == SOUND && receivedData.data == 1){
                   Serial0.printf("Sound: %d\n", receivedData.data);
                   //message = "Loud Sound Detected! Break-in robbery is occuring!";
-                  //message = "sound";
-                  //esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)message, strlen(message));
-                } else {
-                  Serial0.println("No warnings. You are safe.");
+                  message = SOUND;
+                  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
                 }
             }
           }
@@ -174,6 +172,7 @@ void setup() {
     Serial0.begin(115200);
     //while(!Serial);
     Serial0.println("starting");
+    WiFi.mode(WIFI_STA);
 
     // Create Queue (size: 10 elements)
     sensorQueue = xQueueCreate(10, sizeof(SensorData));
@@ -184,7 +183,7 @@ void setup() {
 
     // Setup the ESP-NOW communication
     if (esp_now_init() != ESP_OK) return; // Initialize ESP-NOW and check for success
-   // esp_now_register_send_cb(onDataSent); // Register the send callback function
+    esp_now_register_send_cb(onDataSent); // Register the send callback function
 
     esp_now_peer_info_t peerInfo; // Data structure for handling peer information
     // Copy the receiver's MAC address to peer information
