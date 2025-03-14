@@ -1,8 +1,10 @@
+// Libraries
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <esp_now.h>
 #include <WiFi.h>
 
+// Macros:
 #define MOTION 0
 #define TEMP 1
 #define HUM 2
@@ -55,11 +57,12 @@ void setup() {
 }
 
 void loop() {
-  */
+
    if(messageReceived){
     lcd.clear();
     lcd.setCursor(0, 0);
     Serial.printf("Sensor Message: %d\n", sensorMessage);
+    
     if(sensorMessage == MOTION){
       lcd.print("BREAK-IN! HIDE!");
     }else if (sensorMessage == HUM){
@@ -69,7 +72,6 @@ void loop() {
     }else if (sensorMessage == FLOOD){
       lcd.print("FLOOD! EVACUATE!");
     }
-    // delay(2000);
     messageReceived = false;
   }
 
