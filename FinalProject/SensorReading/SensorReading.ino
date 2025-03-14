@@ -141,22 +141,18 @@ void Task_SerialMonitor(void *pvParameters) {
             if (xQueueReceive(sensorQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
                 if(receivedData.sensor == MOTION && receivedData.data == 1){
                   Serial0.printf("Motion: %d\n", receivedData.data);
-                  //message = "Motion Detected! Break-in robbery is occuring!";
                   message = MOTION;
                   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
                 } else if (receivedData.sensor == HUM && receivedData.data > 40){
                   Serial0.printf("Humidity: %d\n", receivedData.data);
-                  //message = "Fire Detected! Please evacuate!";
                   message = HUM;
                   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
                 } else if (receivedData.sensor == FLOOD && receivedData.data > 0){
                   Serial0.printf("Water Level: %d\n", receivedData.data);
-                  //message = "Flood Detected! Please evacuate!";
                   message = FLOOD;
                   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
                 } else if (receivedData.sensor == SOUND && receivedData.data == 1){
                   Serial0.printf("Sound: %d\n", receivedData.data);
-                  //message = "Loud Sound Detected! Break-in robbery is occuring!";
                   message = SOUND;
                   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&message, 32);
                 }
