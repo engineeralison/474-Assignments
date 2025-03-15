@@ -22,13 +22,9 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 //
 void IRAM_ATTR dataReceived(const esp_now_recv_info_t * esp_now_info, const uint8_t *incomingData, int len)
 {
-
   if (len >= sizeof(sensorMessage)) len = sizeof(sensorMessage) - 1; // Prevent overflow
-  
   messageReceived = true;
   memcpy((int*) &sensorMessage,incomingData, len);
-  // sensorMessage[len] = '\0';
-
   Serial.printf("Data: %d\n",  incomingData );
   
 }
@@ -37,7 +33,6 @@ void setup() {
 
  Serial.begin(115200);
  while(!Serial);
-
 
  Serial.println("Starting\n");
  WiFi.mode(WIFI_STA);
@@ -57,7 +52,6 @@ void setup() {
 }
 
 void loop() {
-
    if(messageReceived){
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -74,6 +68,4 @@ void loop() {
     }
     messageReceived = false;
   }
-
-
 }
