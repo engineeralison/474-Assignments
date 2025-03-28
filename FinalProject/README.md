@@ -1,5 +1,5 @@
 **Environmental Sensor Alarm System**
-**Video Link: **  https://youtu.be/J7D62Jn6G84?si=YI9CXfdZGBBq4l6O
+**Video Link:**  https://youtu.be/J7D62Jn6G84?si=YI9CXfdZGBBq4l6O
 
 The final project is an “Environmental Sensor Alarm System” that is designed to trigger emergency alarms in homes and buildings when a break-in, flooding, or fire occurs. This ensures that any facilities that use this alarm system are quickly notified when a threat occurs, so that all occupants can quickly evacuate to safety. Motivated by the amount of fires, break-ins, and floods that unfortunately occur in people's homes or buildings, this project addresses the issue of occupants that have been affected without a good alarm system to warn them. 
 
