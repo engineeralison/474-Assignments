@@ -1,14 +1,45 @@
-**Environmental Sensor Alarm System**
+#Environmental Sensor Alarm System#
 
-**Video Link:**  https://youtu.be/J7D62Jn6G84?si=YI9CXfdZGBBq4l6O
+🎥 Video Demo
 
-The final project is an “Environmental Sensor Alarm System” that is designed to trigger emergency alarms in homes and buildings when a break-in, flooding, or fire occurs. This ensures that any facilities that use this alarm system are quickly notified when a threat occurs, so that all occupants can quickly evacuate to safety. Motivated by the amount of fires, break-ins, and floods that unfortunately occur in people's homes or buildings, this project addresses the issue of occupants that have been affected without a good alarm system to warn them. 
+The Environmental Sensor Alarm System is designed to trigger emergency alarms in homes and buildings when a break-in, flooding, or fire occurs. This ensures that facilities using the system are quickly notified of potential threats, allowing all occupants to evacuate safely.
 
+Motivated by the rising number of fires, break-ins, and floods affecting homes and workplaces, this project addresses the need for a reliable, multi-sensor alarm system that provides early warnings during emergencies.
 
-Additionally, the system uses ESP NOW peer-to-peer wireless communication protocol, where one ESP32 is dedicated to sensor monitoring and the other to displaying alerts on the LCD. With its ability to detect multiple types of hazards, the Environmental Sensor Alarm System serves as a comprehensive security solution for homes, offices, and other buildings. Its integration of multiple sensors ensures a reliable and responsive alarm system that significantly improves emergency preparedness and occupant safety.
+The system uses the ESP-NOW peer-to-peer wireless communication protocol, where one ESP32 handles sensor monitoring and another displays alerts on an LCD screen. With its ability to detect multiple types of hazards, this project offers a comprehensive security solution for homes, offices, and other buildings.
 
+Features
 
-**Learning Objectives**
-The learning objects of this project are applying embedded system design principles, optimizing system performance, problem solving, and innovation. 
+Break-in detection using sound and motion sensors.
 
-By integrating four different sensors with an ESP32 microcontroller, values involving sound, motion, water and temperature will be collected to determine if there is danger for an alarm to be triggered. A sound and motion sensor will be used to detect a break-in into the building. A water sensor module will be used to detect when a flood occurs if a specific water level is reached. A temperature sensor will be used to detect high temperatures to signal a fire. By implementing a user interface with an LCD display, occupants can quickly identify the nature of the emergency. 
+Flood detection with a water sensor module.
+
+Fire detection using a temperature sensor.
+
+ESP-NOW wireless communication between ESP32 boards.
+
+LCD display interface for identifying the type of emergency.
+
+Real-time, multi-sensor monitoring with multitasking scheduling.
+
+Learning Objectives
+
+This project focuses on:
+
+Applying embedded system design principles.
+
+Optimizing system performance.
+
+Developing problem-solving skills.
+
+Encouraging innovation in IoT and safety systems.
+
+By integrating four different sensors with an ESP32 microcontroller, the system collects real-time data to determine whether an alarm should be triggered. Occupants can quickly identify the nature of the emergency through the LCD display interface.
+
+Project Structure
+
+/receiver/ – Contains the ESP-NOW wireless communication logic and the code that determines which warning message to display on the LCD.
+
+/sensorreading/ – Contains the multitasking scheduler and the four dedicated task functions for each sensor (sound, motion, water, and temperature).
+
+Additional modules may handle alarm signaling, system initialization, and configuration settings.
